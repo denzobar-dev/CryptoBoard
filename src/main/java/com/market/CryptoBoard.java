@@ -27,20 +27,20 @@ public final class CryptoBoard extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // Опрос биржи каждые 5 секунд для живой динамики
+        // Опрос биржи каждые 5 секунд
         Bukkit.getAsyncScheduler().runAtFixedRate(this, task -> {
             for (String ticker : tickers) {
                 fetchPrice(ticker);
             }
         }, 1, 5, java.util.concurrent.TimeUnit.SECONDS);
 
-        // Анимация индикатора LIVE (мигающая неоновая точка раз в секунду)
+        // Тик анимации мигания LIVE раз в секунду
         Bukkit.getAsyncScheduler().runAtFixedRate(this, task -> {
             animTick++;
         }, 1, 1, java.util.concurrent.TimeUnit.SECONDS);
 
         new CryptoExpansion().register();
-        getLogger().info("CryptoBoard биржевой терминал активирован!");
+        getLogger().info("CryptoBoard запущен!");
     }
 
     private void fetchPrice(String symbol) {
@@ -58,38 +58,28 @@ public final class CryptoBoard extends JavaPlugin {
                             double currentPrice = Double.parseDouble(matcher.group(1));
                             double oldPrice = lastPrices.getOrDefault(symbol, currentPrice);
 
-                            // Рассчитываем динамику курса
                             String color;
                             String arrow;
-                            double diffPercent = 0.0;
-
-                            if (oldPrice > 0) {
-                                diffPercent = ((currentPrice - oldPrice) / oldPrice) * 100.0;
-                            }
 
                             if (currentPrice > oldPrice) {
-                                color = "&a"; // Сочный зелёный при росте
+                                color = "&a"; // Зеленый
                                 arrow = "▲";
                             } else if (currentPrice < oldPrice) {
-                                color = "&c"; // Яркий красный при падении
+                                color = "&c"; // Красный
                                 arrow = "▼";
                             } else {
-                                color = "&f"; // Белый, если не изменилась
+                                color = "&f"; // Белый
                                 arrow = "■";
                             }
 
-                            // Сохраняем текущую для следующего тика
                             lastPrices.put(symbol, currentPrice);
 
-                            // Форматируем цену
-                            String priceStr = (currentPrice < 1) 
-                                    ? String.format("%.4f", currentPrice) 
+                            String priceStr = (currentPrice < 1)
+                                    ? String.format("%.4f", currentPrice)
                                     : String.format("%,.2f", currentPrice);
 
-                            // Готовая биржевая строка: [ЦВЕТ] $64,250.00 ▲ (+0.12%)
-                            String formatted = String.format("%s$%s &l%s &7(%s%.2f%%&7)", 
-                                    color, priceStr, arrow, color, diffPercent);
-
+                            // Формат для каждого тикера: $64,250.00 ▲
+                            String formatted = String.format("%s$%s %s", color, priceStr, arrow);
                             displayLines.put(symbol.toLowerCase(), formatted);
                         }
                     });
@@ -102,7 +92,7 @@ public final class CryptoBoard extends JavaPlugin {
         @Override
         public @NotNull String getAuthor() { return "Dev"; }
         @Override
-        public @NotNull String getVersion() { return "2.0"; }
+        public @NotNull String getVersion() { return "3.0"; }
         @Override
         public boolean persist() { return true; }
 
@@ -110,13 +100,23 @@ public final class CryptoBoard extends JavaPlugin {
         public String onPlaceholderRequest(Player player, @NotNull String params) {
             String p = params.toLowerCase();
 
-            // Анимированный индикатор работы биржи %crypto_live%
+            // Вся лента котировок в одну цельную строку: %crypto_line%
+            if (p.equals("line")) {
+                return String.format("&6&lBTC &r%s &8| &6&lETH &r%s &8| &6&lSOL &r%s &8| &6&lTON &r%s",
+                        displayLines.getOrDefault("btcusdt", "&7..."),
+                        displayLines.getOrDefault("ethusdt", "&7..."),
+                        displayLines.getOrDefault("solusdt", "&7..."),
+                        displayLines.getOrDefault("tonusdt", "&7...")
+                );
+            }
+
+            // Мигающая точка LIVE: %crypto_live%
             if (p.equals("live")) {
                 return (animTick % 2 == 0) ? "&a● &2LIVE" : "&2○ &aLIVE";
             }
 
-            // Вывод строки с динамикой цен: %crypto_btcusdt%
-            return displayLines.getOrDefault(p, "&7Загрузка данных...");
+            // Отдельные тикеры, если понадобятся: %crypto_btcusdt%
+            return displayLines.getOrDefault(p, "&7...");
         }
     }
 }
