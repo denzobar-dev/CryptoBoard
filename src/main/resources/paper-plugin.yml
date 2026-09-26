@@ -1,0 +1,9 @@
+name: CryptoBoard
+version: '1.0'
+main: com.market.CryptoBoard
+api-version: '1.21'
+dependencies:
+  server:
+    PlaceholderAPI:
+      load: BEFORE
+      required: true
